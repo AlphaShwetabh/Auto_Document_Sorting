@@ -9,7 +9,7 @@
 | Step | Command | Result (verified in log) |
 |---|---|---|
 | Check Homebrew | `brew --version` | `zsh: command not found: brew` |
-| Attempt install | `/bin/bash -c "$(curl -fsSL .../install.sh)"` | Failed — `curl` itself wasn't found either |
+| Attempt install | `% /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` | Failed — `curl` itself wasn't found either |
 | Use system curl | `/usr/bin/curl --version` | `curl 8.7.1 (x86_64-apple-darwin25.0)` — confirms curl exists at that path but wasn't on `$PATH` |
 | Fix PATH | `export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"` | `curl --version` now resolves |
 | Install Homebrew | re-ran the install script | Succeeded — prompted for sudo password (one failed attempt, then success), installed to `/opt/homebrew` |
