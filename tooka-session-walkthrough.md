@@ -13,7 +13,7 @@
 | Use system curl | `/usr/bin/curl --version` | `curl 8.7.1 (x86_64-apple-darwin25.0)` — confirms curl exists at that path but wasn't on `$PATH` |
 | Fix PATH | `export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"` | `curl --version` now resolves |
 | Install Homebrew | re-ran the install script | Succeeded — prompted for sudo password (one failed attempt, then success), installed to `/opt/homebrew` |
-| Add brew to shell | appended `eval "$(/opt/homebrew/bin/brew shellenv zsh)"` to `~/.zprofile` | `brew --version` → **Homebrew 7.0.4** |
+| Add brew to shell | echo 'eval "$(/opt/homebrew/bin/brew shellenv zsh)"' >> ~/.zprofile | `brew --version` → **Homebrew 7.0.4** |
 | Architecture check | `uname -m` | `arm64` |
 | Health check | `brew doctor` | One warning only: newer Command Line Tools available (Xcode 26.6) — non-blocking, "Tier 2 configuration" note |
 
