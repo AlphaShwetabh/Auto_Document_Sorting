@@ -67,7 +67,7 @@ A throwaway test area was created so no real files were at risk first:
 mkdir -p ~/TookaTest/Downloads
 touch ~/TookaTest/Downloads/{invoice.pdf,photo.jpg,project.zip,report.pdf,presentation.pptx}
 ```
-'''
+```
 id: organize_pdfs
 name: Organize PDF files
 enabled: true
@@ -84,7 +84,7 @@ then:
   - action: move
     to: ~/TookaTest/Sorted/PDFs
     preserve_structure: false
-    '''
+```
 **Rule created — `pdf_rule.yaml`** (id `organize_pdfs`, priority 1): matches `*.pdf`, moves to `~/TookaTest/Sorted/PDFs`.
 
 - `tooka validate pdf_rule.yaml` → `[OK] File is structurally valid (schema match)`
