@@ -345,6 +345,139 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.shwetabh.tooka.downl
 
 launchctl print gui/$(id -u)/com.shwetabh.tooka.downloads
 ```
+
+**Paste in terminal**
+```
+cat > ~/TookaAutomation/organize_downloads.sh <<'EOF'                                 
+#!/bin/bash           
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+DOWNLOADS="$HOME/Downloads"  
+DUPLICATES="$DOWNLOADS/Duplicates"        
+REPORT="$HOME/TookaAutomation/duplicates.txt"
+LOG="$HOME/TookaAutomation/logs"              
+    
+mkdir -p "$DUPLICATES"           
+mkdir -p "$LOG"                                                   
+    
+# -----------------------------
+# 1. Sort Downloads using Tooka
+# -----------------------------                                       
+TOOKA="$(command -v tooka 2>/dev/null)"        
+
+if [ -n "$TOOKA" ]; then
+    "$TOOKA" sort "$DOWNLOADS" >/dev/null 2>&1
+fi                                        
+    
+# -----------------------------
+# 2. Find exact duplicates                             
+# -----------------------------
+TMP="$HOME/TookaAutomation/.hashes.tmp"          
+SORTED="$HOME/TookaAutomation/.hashes.sorted"                   
+        
+rm -f "$TMP" "$SORTED"
+
+# Hash every file except files already inside Duplicates
+find "$DOWNLOADS" -type f \                       
+    ! -path "$DUPLICATES/*" \
+    ! -name ".DS_Store" \                        
+    ! -name ".localized" \                
+    ! -name "*.crdownload" \
+    ! -name "*.download" \
+    ! -name "*.part" \                
+    ! -name "*.tmp" \                                
+    -print0 |                              
+while IFS= read -r -d '' FILE
+do                          
+    HASH=$(/usr/bin/shasum -a 256 "$FILE" | /usr/bin/awk '{print $1}')
+    printf '%s\t%s\n' "$HASH" "$FILE" >> "$TMP"
+done                         
+        
+if [ ! -s "$TMP" ]; then
+    echo "No files found." > "$REPORT"    
+    rm -f "$TMP" "$SORTED"                          
+    exit 0                                
+fi
+# Same hashes together, then paths alphabetically
+/usr/bin/sort -t "$(printf '\t')" -k1,1 -k2,2 "$TMP" > "$SORTED"
+        
+PREVIOUS_HASH=""      
+FOUND=0                                       
+                
+: > "$REPORT"                                     
+                
+echo "Tooka Duplicate Report" >> "$REPORT"       
+echo "======================" >> "$REPORT"
+echo "" >> "$REPORT"        
+
+while IFS=$'\t' read -r HASH FILE
+do                                                                
+    if [ "$HASH" = "$PREVIOUS_HASH" ]; then
+
+        FOUND=1                
+    
+        BASENAME="$(basename "$FILE")"         
+        NAME="${BASENAME%.*}"
+        EXT="${BASENAME##*.}"
+
+        if [ "$NAME" = "$BASENAME" ]; then
+            DEST="$DUPLICATES/${BASENAME}_duplicate"
+        else                   
+            DEST="$DUPLICATES/${NAME}_duplicate.${EXT}"
+        fi
+
+        COUNT=1                                                 
+        while [ -e "$DEST" ]
+        do            
+            if [ "$NAME" = "$BASENAME" ]; then
+                DEST="$DUPLICATES/${BASENAME}_duplicate_$COUNT"
+            else                                  
+                DEST="$DUPLICATES/${NAME}_duplicate_$COUNT.${EXT}"
+            fi                                   
+            COUNT=$((COUNT + 1))          
+        done                
+    
+        echo "DUPLICATE:" >> "$REPORT"
+        echo "Original/Kept: hash $HASH" >> "$REPORT"
+        echo "Moved: $FILE" >> "$REPORT"   
+        echo "To: $DEST" >> "$REPORT"
+        echo "" >> "$REPORT"
+    
+        /bin/mv "$FILE" "$DEST"                
+        
+    else                     
+        PREVIOUS_HASH="$HASH"
+    fi                                    
+            
+done < "$SORTED"                          
+            
+if [ "$FOUND" -eq 0 ]; then                                    
+    echo "No exact duplicates found." >> "$REPORT"
+else                                                              
+    echo "Duplicate scan completed." >> "$REPORT"
+fi                                        
+        
+echo "" >> "$REPORT"
+echo "Checked: $(date)" >> "$REPORT"  
+        
+rm -f "$TMP" "$SORTED"                     
+EOF                                  
+        
+chmod +x ~/TookaAutomation/organize_downloads.sh
+        
+echo "Running duplicate scan..."
+~/TookaAutomation/organize_downloads.sh
+        
+echo ""                                   
+echo "========== DUPLICATES FOLDER =========="
+find ~/Downloads/Duplicates -type f -print
+            
+echo ""                    
+echo "========== DUPLICATE REPORT =========="     
+cat ~/TookaAutomation/duplicates.txt   
+
+```
 ---
 
 ## 8. Automating the scan with `launchd`
