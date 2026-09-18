@@ -191,6 +191,160 @@ Report:
 ```
 Same two duplicate pairs identified consistently across all three script versions — the hash values are identical every time, confirming the detection logic itself was reliable throughout; only the *handling* (report-only → move → move-with-rename) changed between iterations.
 
+```
+mkdir -p ~/TookaAutomation
+mkdir -p ~/TookaAutomation/logs
+```
+```
+cat > ~/TookaAutomation/organize_downloads.sh <<'EOF'
+#!/bin/bash
+
+DOWNLOADS="$HOME/Downloads"
+REPORT="$HOME/TookaAutomation/duplicates.txt"
+LOCKDIR="$HOME/TookaAutomation/.running"
+
+# Prevent two copies from running simultaneously
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+    exit 0
+fi
+
+trap 'rmdir "$LOCKDIR"' EXIT
+
+# Give downloads a little time to finish
+sleep 5
+
+# -----------------------------
+# 1. Sort Downloads using Tooka
+# -----------------------------
+
+/Users/shwetabhsanjeevsuman/.local/bin/tooka sort \
+    --source "$DOWNLOADS" \
+    --rules organize_downloads_pdfs,organize_downloads_images,organize_downloads_installers \
+    >/dev/null 2>&1
+
+# -----------------------------
+# 2. Duplicate detection
+# -----------------------------
+
+TMP="$HOME/TookaAutomation/hash_data.tmp"
+
+rm -f "$TMP"
+rm -f "$REPORT"
+
+touch "$TMP"
+
+# Find files and calculate size + SHA-256
+find "$DOWNLOADS" -type f \
+    ! -name ".DS_Store" \
+    ! -name ".localized" \
+    ! -name "duplicates.txt" \
+    -print0 |
+while IFS= read -r -d '' FILE
+do
+    SIZE=$(stat -f "%z" "$FILE" 2>/dev/null)
+    HASH=$(shasum -a 256 "$FILE" 2>/dev/null | awk '{print $1}')
+
+    if [ -n "$SIZE" ] && [ -n "$HASH" ]; then
+        printf '%s\t%s\t%s\n' "$SIZE" "$HASH" "$FILE" >> "$TMP"
+    fi
+done
+
+# Find hashes that occur more than once
+awk -F '\t' '
+{
+    count[$2]++
+}
+END {
+    for (hash in count) {
+        if (count[hash] > 1)
+            print hash
+    }
+}' "$TMP" > "$HOME/TookaAutomation/duplicate_hashes.tmp"
+
+if [ -s "$HOME/TookaAutomation/duplicate_hashes.tmp" ]; then
+
+    echo "Tooka Duplicate Report" >> "$REPORT"
+    echo "Generated: $(date)" >> "$REPORT"
+    echo "========================================" >> "$REPORT"
+    echo "" >> "$REPORT"
+
+    while IFS= read -r HASH
+    do
+        echo "Duplicate SHA-256: $HASH" >> "$REPORT"
+        echo "----------------------------------------" >> "$REPORT"
+
+        awk -F '\t' -v hash="$HASH" '$2 == hash {print $3}' "$TMP" >> "$REPORT"
+
+        echo "" >> "$REPORT"
+    done < "$HOME/TookaAutomation/duplicate_hashes.tmp"
+
+else
+
+    echo "No exact duplicates found." > "$REPORT"
+    echo "Checked: $(date)" >> "$REPORT"
+
+fi
+
+rm -f "$TMP"
+rm -f "$HOME/TookaAutomation/duplicate_hashes.tmp"
+
+EOF
+```
+**Make the script executable**
+```
+chmod +x ~/TookaAutomation/organize_downloads.sh
+```
+
+**Test the automation manually FIRST**
+```
+~/TookaAutomation/organize_downloads.sh
+
+cat ~/TookaAutomation/duplicates.txt
+```
+**Launch Agenets**
+```
+mkdir -p ~/Library/LaunchAgents
+```
+```
+cat > ~/Library/LaunchAgents/com.shwetabh.tooka.downloads.plist <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+"http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+
+<plist version="1.0">
+<dict>
+
+    <key>Label</key>
+    <string>com.shwetabh.tooka.downloads</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/shwetabhsanjeevsuman/TookaAutomation/organize_downloads.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>60</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/shwetabhsanjeevsuman/TookaAutomation/logs/tooka.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/shwetabhsanjeevsuman/TookaAutomation/logs/tooka-error.log</string>
+
+</dict>
+</plist>
+EOF
+```
+
+**Load Automation**
+```
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.shwetabh.tooka.downloads.plist
+
+launchctl print gui/$(id -u)/com.shwetabh.tooka.downloads
+```
 ---
 
 ## 8. Automating the scan with `launchd`
