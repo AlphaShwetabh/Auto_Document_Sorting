@@ -4,7 +4,7 @@ cat > "$HOME/TookaAutomation/duplicate_scanner.sh" << 'SCRIPT_EOF'
 #!/bin/bash
 set -uo pipefail
 
-EXCLUDE_DIRS=(".git" "node_modules" "Library/Caches" ".Trash")
+EXCLUDE_DIRS=(".git" "node_modules" "Library/Caches" ".Trash" ".tmp.driveupload" ".tmp.drivedownload")
 LOG_FILE="$HOME/TookaAutomation/logs/duplicates.log"
 WORK_DIR="$HOME/TookaAutomation/tmp/$$"
 TAB=$'\t'
