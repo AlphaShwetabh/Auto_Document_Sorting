@@ -1,4 +1,4 @@
-**Script**
+# Script
 ```
 cat > "$HOME/TookaAutomation/duplicate_scanner.sh" << 'SCRIPT_EOF'
 #!/bin/bash
