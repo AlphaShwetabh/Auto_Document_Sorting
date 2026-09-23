@@ -221,3 +221,34 @@ cat > "$HOME/Library/LaunchAgents/com.user.tookadupes.backupplus.plist" << PLIST
 PLIST_EOF
 launchctl load "$HOME/Library/LaunchAgents/com.user.tookadupes.backupplus.plist"
 ```
+# iCloud Drive
+**Find the exact iCloud Drive path and confirm it's accessible**
+```
+ICLOUD="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
+ls "$ICLOUD" | head -20
+```
+If that lists your iCloud Drive folders, you're good. If it errors, iCloud Drive syncing may not be fully set up on this Mac.
+
+**Check how many files are evicted / not locally downloaded — this matters before scanning**
+```
+find "$ICLOUD" -name "*.icloud" 2>/dev/null | wc -l
+```
+Any number greater than 0 means that many files exist only in the cloud, not on disk. The scanner will skip these safely (it can't hash what isn't downloaded) and log them under SKIP hash-failed — but it means the scan won't catch duplicates among those files until they're downloaded locally. If you want a fully accurate scan, you'd need to either turn off "Optimize Mac Storage" (System Settings → Apple ID → iCloud → iCloud Drive) and wait for everything to sync down, or accept that evicted files are excluded from this pass.
+
+**Dry-run**
+```
+"$HOME/TookaAutomation/duplicate_scanner.sh" --dry-run "$ICLOUD"
+```
+Given your Downloads/HDD scans both took a while and iCloud syncing can be slow to respond to file reads, this may take longer than the HDD did — let it finish.
+
+**Review before committing**
+```
+grep "SCAN START\|SCAN END" "$HOME/TookaAutomation/logs/duplicates.log" | tail -4
+grep "SKIP hash-failed" "$HOME/TookaAutomation/logs/duplicates.log" | tail -20
+```
+The second command shows you how many/which files got skipped due to not being locally available — worth a glance so you know the scan's actual coverage.
+
+**Real run once you're satisfied**
+```
+"$HOME/TookaAutomation/duplicate_scanner.sh" "$ICLOUD"
+```
