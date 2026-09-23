@@ -173,3 +173,51 @@ launchctl unload "$HOME/Library/LaunchAgents/com.user.tookadupes.plist"
 launchctl unload "$HOME/Library/LaunchAgents/com.user.tookadupes.plist" 2>/dev/null
 rm "$HOME/Library/LaunchAgents/com.user.tookadupes.plist"
 ```
+# For External Drive
+**Confirm the drive is mounted and check the exact path**
+```
+ls /Volumes/ | grep -i "backup"
+```
+That should show something like Backup Plus. If nothing shows up, the drive isn't mounted — plug it in / wait for it to spin up, then re-run.
+**Set the root and dry-run first**
+```
+MAIN_FOLDER="/Volumes/Backup Plus"
+"$HOME/TookaAutomation/duplicate_scanner.sh" --dry-run "$MAIN_FOLDER"
+```
+**Review before committing**
+```
+tail -100 "$HOME/TookaAutomation/logs/duplicates.log"
+```
+**Run for real once you're satisfied**
+```
+"$HOME/TookaAutomation/duplicate_scanner.sh" "$MAIN_FOLDER"
+```
+This creates /Volumes/Backup Plus/Duplicated/ and moves confirmed duplicates there, per the same original-selection rule (earliest mtime kept, size-then-hash matching, collision-safe renaming).
+
+**If you want it automated too (its own launchd job)**
+```
+cat > "$HOME/Library/LaunchAgents/com.user.tookadupes.backupplus.plist" << PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.tookadupes.backupplus</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$HOME/TookaAutomation/duplicate_scanner.sh</string>
+        <string>/Volumes/Backup Plus</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>$HOME/TookaAutomation/logs/launchd_backupplus_stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>$HOME/TookaAutomation/logs/launchd_backupplus_stderr.log</string>
+</dict>
+</plist>
+PLIST_EOF
+launchctl load "$HOME/Library/LaunchAgents/com.user.tookadupes.backupplus.plist"
+```
