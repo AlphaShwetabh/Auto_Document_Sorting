@@ -203,6 +203,23 @@ PLIST_EOF
 launchctl load "$HOME/Library/LaunchAgents/com.user.tookadupes.plist"
 launchctl list | grep tookadupes
 ```
+**If error**
+**Remove any old copy of the job** 
+```
+launchctl bootout gui/$(id -u)/com.user.tookadupes 2>/dev/null
+```
+**Check that the plist is valid and has the right permissions** 
+```
+PLIST="$HOME/Library/LaunchAgents/com.user.tookadupes.plist"
+plutil -lint "$PLIST"
+chmod 644 "$PLIST"
+ls -la "$PLIST"
+```
+You want OK from plutil. If it prints an error instead, paste it here. A broken heredoc paste is the likely cause, given how often that happened earlier.
+**Check that the files the plist points to exist** 
+```
+ls -la "$HOME/TookaAutomation/run_all.sh" "$HOME/TookaAutomation/logs/"
+```
 **To Confirm that automation is working** 
 Setting->General->Login items & extentions -> App Background Activity
 
