@@ -156,6 +156,53 @@ PLIST_EOF
 launchctl load "$HOME/Library/LaunchAgents/com.user.tookadupes.plist"
 echo "Loaded — will run every 3600s (1 hour) against $HOME/Downloads."
 ```
+# Multiple Automation
+**Create a wrapper** 
+```
+cat > "$HOME/TookaAutomation/run_all.sh" << 'EOF'
+#!/bin/bash
+ROOTS=(
+  "$HOME/Downloads"
+  "$HOME/Documents"
+)
+LOCK="$HOME/TookaAutomation/run.lock"
+mkdir "$LOCK" 2>/dev/null || exit 0
+trap 'rmdir "$LOCK"' EXIT
+for r in "${ROOTS[@]}"; do
+  [[ -d "$r" ]] || { echo "Skipping missing folder: $r"; continue; }
+  "$HOME/TookaAutomation/duplicate_scanner.sh" "$r"
+done
+EOF
+chmod +x "$HOME/TookaAutomation/run_all.sh"
+```
+**Point the LaunchAgent at the wrapper** 
+```
+launchctl unload "$HOME/Library/LaunchAgents/com.user.tookadupes.plist" 2>/dev/null
+cat > "$HOME/Library/LaunchAgents/com.user.tookadupes.plist" << PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.tookadupes</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$HOME/TookaAutomation/run_all.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>$HOME/TookaAutomation/logs/launchd_stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>$HOME/TookaAutomation/logs/launchd_stderr.log</string>
+</dict>
+</plist>
+PLIST_EOF
+launchctl load "$HOME/Library/LaunchAgents/com.user.tookadupes.plist"
+launchctl list | grep tookadupes
+```
 **To Confirm that automation is working** 
 Setting->General->Login items & extentions -> App Background Activity
 
