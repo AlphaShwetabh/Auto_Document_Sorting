@@ -33,3 +33,22 @@ echo "== loose top-level files"
 find . -maxdepth 1 -type f ! -name .DS_Store -print0 | xargs -0 -n 25 -P 16 sh -c "$CP" _
 echo "===== ALL FINISHED ====="
 ```
+```
+export SRC="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
+export DST="/Volumes/Extreme SSD/Drive_Cloud/iCloud-Backup"
+mkdir -p "$DST" || exit 1
+caffeinate -i -w $$ &
+cd "$SRC" || exit 1
+CP='rsync -aR "$@" "$DST/" && for f in "$@"; do brctl evict "$SRC/${f#./}" 2>/dev/null; done'
+for d in */; do
+  name="${d%/}"; start=$SECONDS
+  echo "== $name"
+  find "./$name" -type f ! -name .DS_Store -print0 | xargs -0 -n 25 -P 64 sh -c "$CP" _ || echo "SOME FILES FAILED in $name (rerun to retry)"
+  t=$((SECONDS-start))
+  printf "DONE %s | on SSD: %s | time: %02d:%02d:%02d\n" "$name" "$(du -sh "$DST/$name" | cut -f1)" $((t/3600)) $((t%3600/60)) $((t%60))
+done
+echo "== loose top-level files"
+find . -maxdepth 1 -type f ! -name .DS_Store -print0 | xargs -0 -n 25 -P 64 sh -c "$CP" _
+echo "===== ALL FINISHED ====="
+
+```
